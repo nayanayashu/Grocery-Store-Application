@@ -1,0 +1,72 @@
+<!doctype html>
+<title>QuickBasket Login</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-body">
+          <h1 class="card-title text-center mb-4">
+            🛒 QuickBasket
+            <small class="text-muted d-block fs-6">Your Grocery Delivery Partner</small>
+          </h1>
+          <h3 class="text-center mb-4">Login</h3>
+
+          {% with messages = get_flashed_messages() %}
+            {% if messages %}
+              <div class="alert alert-info">
+                {% for m in messages %}{{ m }}<br>{% endfor %}
+              </div>
+            {% endif %}
+          {% endwith %}
+
+          <form method="post">
+            <!-- Role Selection -->
+            <div class="mb-4">
+              <label class="form-label fw-bold">Select Your Role:</label>
+              <div class="btn-group w-100" role="group">
+                <input type="radio" class="btn-check" name="role" id="role_customer" value="customer" autocomplete="off" required>
+                <label class="btn btn-outline-primary" for="role_customer">
+                  👤 Customer
+                </label>
+
+                <input type="radio" class="btn-check" name="role" id="role_admin" value="admin" autocomplete="off" required>
+                <label class="btn btn-outline-danger" for="role_admin">
+                  👔 Admin
+                </label>
+              </div>
+            </div>
+
+            <!-- Login Form -->
+            <div class="mb-3">
+              <label for="email" class="form-label">Email address</label>
+              <input type="email" class="form-control" id="email" name="email" required>
+            </div>
+
+            <div class="mb-3">
+              <label for="password" class="form-label">Password</label>
+              <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+
+            <button type="submit" class="btn btn-success w-100">Login</button>
+          </form>
+
+          <div class="mt-4 text-center">
+            <small class="text-muted">
+              <strong>Default Accounts:</strong><br>
+              Admin: admin@quickbasket.com / admin123<br>
+              Customer: customer@quickbasket.com / customer123
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Auto-focus first role button on page load
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('role_customer').focus();
+});
+</script>
