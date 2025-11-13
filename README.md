@@ -1,12 +1,17 @@
 
-# Grocery Store Flask App (SQLite)
-This is a small web version of the Grocery Store app. It uses SQLite to persist products & sales.
-Run locally:
+# Grocery Store Application (Python)
+Simple CLI grocery store application with:
+- Product listing and admin add
+- Cart management (add/view/remove)
+- Checkout with stock update and receipt
+- Data persisted in data.json
+
+Run:
 ```
-python3 -m venv venv
-source venv/bin/activate   # or venv\Scripts\activate on Windows
-pip install -r requirements.txt
-python app.py
+python3 main.py
 ```
-Open http://127.0.0.1:3000/ in your browser.
-To deploy online, use Replit, PythonAnywhere, or Render (see instructions in chat).
+
+Files:
+- main.py : CLI interface
+- store.py : Core store logic
+- data.json: Sample product data and persisted sales
