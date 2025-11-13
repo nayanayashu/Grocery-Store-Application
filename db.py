@@ -21,6 +21,7 @@ def init_db(db_path='grocery.db'):
     cur = db.cursor()
     cur.execute('''CREATE TABLE products (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, price REAL, stock INTEGER)''')
     cur.execute('''CREATE TABLE sales (id INTEGER PRIMARY KEY AUTOINCREMENT, items_json TEXT, total REAL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+    cur.execute('''CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'customer', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
     sample = [
         ('Rice 5kg', 350.0, 20),
         ('Wheat 5kg', 300.0, 15),
@@ -28,5 +29,17 @@ def init_db(db_path='grocery.db'):
         ('Milk 1L', 35.0, 100)
     ]
     cur.executemany('INSERT INTO products (name, price, stock) VALUES (?, ?, ?)', sample)
+
+    # Create default admin user (email: admin@quickbasket.com, password: admin123)
+    import hashlib
+    admin_password = hashlib.sha256('admin123'.encode()).hexdigest()
+    cur.execute('INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)',
+                ('admin@quickbasket.com', admin_password, 'admin'))
+
+    # Create default customer user (email: customer@quickbasket.com, password: customer123)
+    customer_password = hashlib.sha256('customer123'.encode()).hexdigest()
+    cur.execute('INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)',
+                ('customer@quickbasket.com', customer_password, 'customer'))
+
     db.commit()
     db.close()
