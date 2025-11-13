@@ -1,16 +1,54 @@
-
-from flask import Flask, render_template, request, redirect, url_for, flash, g
-import sqlite3, json
+from flask import Flask, render_template, request, redirect, url_for, flash, g, session
+import sqlite3, json, hashlib
+from functools import wraps
 from db import init_db, get_db
 
 app = Flask(__name__)
-app.secret_key = 'replace-with-a-secure-key'
+app.secret_key = 'replace-with-a-secure-key-grocery-store-2024'
 
 DATABASE = 'grocery.db'
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password, password_hash):
+    return hashlib.sha256(password.encode()).hexdigest() == password_hash
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please login first.')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please login first.')
+            return redirect(url_for('login'))
+        if session.get('user_role') != 'admin':
+            flash('Admin access required.')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.before_first_request
 def setup():
     init_db(DATABASE)
+
+@app.before_request
+def load_user():
+    if 'user_id' in session:
+        db = get_db(DATABASE)
+        cur = db.execute('SELECT id, email, role FROM users WHERE id=?', (session['user_id'],))
+        user = cur.fetchone()
+        if user:
+            g.user = user
+        else:
+            session.clear()
 
 @app.route('/')
 def index():
@@ -18,6 +56,48 @@ def index():
     cur = db.execute('SELECT id, name, price, stock FROM products')
     products = cur.fetchall()
     return render_template('index.html', products=products)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        role = request.form.get('role')
+
+        if not email or not password or not role:
+            flash('All fields are required.')
+            return render_template('login.html')
+
+        db = get_db(DATABASE)
+        cur = db.execute('SELECT id, email, password_hash, role FROM users WHERE email=?', (email,))
+        user = cur.fetchone()
+
+        if not user or not verify_password(password, user['password_hash']):
+            flash('Invalid email or password.')
+            return render_template('login.html')
+
+        if user['role'] != role:
+            flash(f'Invalid role selection. You are registered as a {user["role"]}.')
+            return render_template('login.html')
+
+        session['user_id'] = user['id']
+        session['user_email'] = user['email']
+        session['user_role'] = user['role']
+
+        flash(f'Welcome! Logged in as {role}.')
+
+        if role == 'admin':
+            return redirect(url_for('admin'))
+        else:
+            return redirect(url_for('index'))
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('You have been logged out.')
+    return redirect(url_for('index'))
 
 @app.route('/add_to_cart/<int:product_id>', methods=['POST'])
 def add_to_cart(product_id):
@@ -111,10 +191,11 @@ def checkout():
     db.commit()
     resp = redirect(url_for('index'))
     resp.set_cookie('cart', '', expires=0)
-    flash(f'Checkout successful. Total paid: {total:.2f}')
+    flash(f'Checkout successful. Total paid: ₹{total:.2f}')
     return resp
 
 @app.route('/admin', methods=['GET','POST'])
+@admin_required
 def admin():
     db = get_db(DATABASE)
     if request.method == 'POST':
@@ -131,6 +212,43 @@ def admin():
     cur = db.execute('SELECT id, name, price, stock FROM products')
     products = cur.fetchall()
     return render_template('admin.html', products=products)
+
+@app.route('/admin/delete_product/<int:product_id>', methods=['POST'])
+@admin_required
+def delete_product(product_id):
+    db = get_db(DATABASE)
+    cur = db.execute('SELECT name FROM products WHERE id=?', (product_id,))
+    product = cur.fetchone()
+    if product:
+        db.execute('DELETE FROM products WHERE id=?', (product_id,))
+        db.commit()
+        flash(f'Product "{product["name"]}" deleted.')
+    else:
+        flash('Product not found.')
+    return redirect(url_for('admin'))
+
+@app.route('/admin/update_product/<int:product_id>', methods=['POST'])
+@admin_required
+def update_product(product_id):
+    db = get_db(DATABASE)
+    name = request.form.get('name')
+    price = float(request.form.get('price', 0))
+    stock = int(request.form.get('stock', 0))
+
+    cur = db.execute('SELECT name FROM products WHERE id=?', (product_id,))
+    product = cur.fetchone()
+    if not product:
+        flash('Product not found.')
+        return redirect(url_for('admin'))
+
+    if not name:
+        flash('Name required.')
+        return redirect(url_for('admin'))
+
+    db.execute('UPDATE products SET name=?, price=?, stock=? WHERE id=?', (name, price, stock, product_id))
+    db.commit()
+    flash(f'Product "{name}" updated.')
+    return redirect(url_for('admin'))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=3000, debug=True)
