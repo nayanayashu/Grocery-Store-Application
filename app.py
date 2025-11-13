@@ -35,8 +35,8 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-@app.before_first_request
-def setup():
+# Initialize database on startup
+with app.app_context():
     init_db(DATABASE)
 
 @app.before_request
